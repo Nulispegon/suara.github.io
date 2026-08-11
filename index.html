@@ -305,33 +305,91 @@
         const statsInfo = document.getElementById("statsInfo");
         const clearBtn = document.getElementById("clearBtn");
 
+        // 1. NORMALISASI ARAB DASAR
         function normalisasiArab(teks) {
             if (!teks) return "";
             return teks
-                .replace(/[\u0610-\u061A\u064B-\u065F\u0670]/g, "")
-                .replace(/[أإآٱ]/g, "ا")
-                .replace(/ة/g, "ه")
-                .replace(/ى/g, "ي")
+                .replace(/[\u0610-\u061A\u064B-\u065F\u0670]/g, "") // Hapus harakat
+                .replace(/[أإآٱ]/g, "ا") // Seragamkan Alif
+                .replace(/ة/g, "ه")      // Seragamkan Ta Marbuthah
+                .replace(/ى/g, "ي")      // Seragamkan Alif Maqsura
                 .replace(/ؤ/g, "و")
                 .replace(/ئ/g, "ي")
-                .replace(/ـ/g, "")
+                .replace(/ـ/g, "")       // Hapus kashida
                 .replace(/[^\u0600-\u06FF\s]/g, "")
                 .replace(/\s+/g, " ")
                 .trim();
         }
 
+        // =================================================================
+        // 2. ALGORITMA CANGGIH: LEVENSHTEIN DISTANCE (MENGHITUNG KEMIRIPAN)
+        // =================================================================
+        function hitungKemiripan(str1, str2) {
+            if (str1 === str2) return 100;
+            if (str1.length === 0 || str2.length === 0) return 0;
+
+            const matrix = [];
+            for (let i = 0; i <= str2.length; i++) { matrix[i] = [i]; }
+            for (let j = 0; j <= str1.length; j++) { matrix[0][j] = j; }
+
+            for (let i = 1; i <= str2.length; i++) {
+                for (let j = 1; j <= str1.length; j++) {
+                    if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+                        matrix[i][j] = matrix[i - 1][j - 1];
+                    } else {
+                        matrix[i][j] = Math.min(
+                            matrix[i - 1][j - 1] + 1, // ganti
+                            Math.min(
+                                matrix[i][j - 1] + 1, // sisip
+                                matrix[i - 1][j] + 1  // hapus
+                            )
+                        );
+                    }
+                }
+            }
+            const jarak = matrix[str2.length][str1.length];
+            const maxLen = Math.max(str1.length, str2.length);
+            return ((maxLen - jarak) / maxLen) * 100; // Hasil persentase 0 - 100%
+        }
+
+        // 3. CEK COCOK PINTAR (GABUNGAN SUBSTRING + FUZZY 70%)
+        function cekCocokPintar(queryNormal, teksDatabase) {
+            // A. Cek langsung (kalau persis atau ada di dalam kalimat)
+            if (teksDatabase.includes(queryNormal)) return true;
+
+            // B. Cek tanpa spasi (mengatasi "الا لا" vs "لالا")
+            const queryTanpaSpasi = queryNormal.replace(/\s+/g, "");
+            const dbTanpaSpasi = teksDatabase.replace(/\s+/g, "");
+            if (dbTanpaSpasi.includes(queryTanpaSpasi)) return true;
+
+            // C. Cek Fuzzy per kata (Toleransi salah dengar/huruf hilang sampai 70%)
+            const kataQuery = queryNormal.split(" ").filter(k => k.length > 1);
+            const kataDb = teksDatabase.split(" ").filter(k => k.length > 1);
+
+            if (kataQuery.length === 0) return false;
+
+            // Pastikan setiap kata yang diucapkan punya kata "pasangan yang mirip" di database
+            return kataQuery.every(kq => {
+                return kataDb.some(kdb => {
+                    return hitungKemiripan(kq, kdb) >= 70 || kdb.includes(kq) || kq.includes(kdb);
+                });
+            });
+        }
+
+        // 4. FUNGSI HIGHLIGHT
         function highlightTeks(teksAsli, queryNormal) {
             if (!queryNormal) return teksAsli;
-            const kataQuery = queryNormal.split(" ").filter(k => k.length > 0);
+            const kataQuery = queryNormal.split(" ").filter(k => k.length > 1);
             let kataAsliArray = teksAsli.split(" ");
             
             return kataAsliArray.map(kata => {
                 const kataNormal = normalisasiArab(kata);
-                const cocok = kataQuery.some(k => kataNormal.includes(k));
+                const cocok = kataQuery.some(k => hitungKemiripan(k, kataNormal) >= 70 || kataNormal.includes(k));
                 return cocok ? `<mark>${kata}</mark>` : kata;
             }).join(" ");
         }
 
+        // 5. PENCARIAN UTAMA
         function cariNadzom() {
             const queryRaw = searchInput.value;
             const queryNormal = normalisasiArab(queryRaw);
@@ -352,13 +410,13 @@
 
             const hasil = dataNadzom.filter(item => {
                 const sumberCari = normalisasiArab(item.teks_pencarian || item.teks_asli);
-                return sumberCari.includes(queryNormal);
+                return cekCocokPintar(queryNormal, sumberCari);
             });
 
             statsInfo.innerHTML = `Ditemukan: <b>${hasil.length}</b> bait`;
 
             if (hasil.length === 0) {
-                wadahHasil.innerHTML = "<div class='info-msg'>Bait tidak ditemukan. Tidak ada bait yang cocok persis dengan ketikan Anda.</div>";
+                wadahHasil.innerHTML = "<div class='info-msg'>Bait tidak ditemukan. Coba ucapkan 2-3 kata yang paling jelas dari bait tersebut.</div>";
                 return;
             }
 
@@ -386,12 +444,11 @@
             }).join("");
         }
 
-        // --- FUNGSI TERJEMAHAN & INTISARI ---
+        // 6. FUNGSI TERJEMAHAN AI
         async function terjemahkanAI(index, teksArab, kitab) {
             const wadahAI = document.getElementById(`res-ai-${index}`);
             const tombolAI = document.getElementById(`btn-ai-${index}`);
             
-            // Pengecekan keamanan API Key
             if (!API_KEY || API_KEY === "MASUKKAN_API_KEY_GEMINI_DISINI") {
                 alert("Harap masukkan API Key Gemini Anda di kode index.html sebelum menggunakan fitur AI!");
                 return;
@@ -419,7 +476,7 @@ Wajib gunakan format persis seperti ini:
 (isi 1 kalimat intisari di sini)`;
 
             try {
-                const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent", {
+                const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -492,6 +549,7 @@ Wajib gunakan format persis seperti ini:
             timerDebounce = setTimeout(cariNadzom, 100);
         });
 
+        // 7. FITUR SUARA (SPEECH-TO-TEXT)
         function mulaiSuara() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!SpeechRecognition) {
