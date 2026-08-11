@@ -1,1 +1,644 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pencarian Bait Nadzom & AI Translator</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Google Sans', 'Segoe UI', Tahoma, sans-serif;
+            max-width: 800px;
+            margin: 30px auto;
+            padding: 0 20px;
+            background-color: #f8f9fa;
+            color: #202124;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            color: #202124;
+            margin-bottom: 6px;
+        }
+        .header p {
+            color: #5f6368;
+            font-size: 14px;
+        }
+        
+        /* --- DESAIN BOX ALA GOOGLE TRANSLATE --- */
+        .translate-box {
+            background: #ffffff;
+            border: 1px solid #dadce0;
+            border-radius: 14px;
+            box-shadow: 0 2px 6px 0 rgba(0,0,0,0.08);
+            transition: box-shadow 0.2s, border-color 0.2s;
+            margin-bottom: 20px;
+            overflow: hidden;
+            position: sticky;
+            top: 15px;
+            z-index: 100;
+        }
+        .translate-box:focus-within {
+            border-color: #1a73e8;
+            box-shadow: 0 4px 14px rgba(26,115,232,0.18);
+        }
+        .textarea-container {
+            position: relative;
+            padding: 20px 20px 10px 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 70px;
+            border: none;
+            outline: none;
+            resize: none;
+            font-size: 24px;
+            line-height: 1.5;
+            direction: rtl;
+            font-family: 'Traditional Arabic', 'Segoe UI', Tahoma, sans-serif;
+            color: #202124;
+            background: transparent;
+        }
+        textarea::placeholder {
+            color: #80868b;
+            font-size: 18px;
+        }
+        .box-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 16px 12px 16px;
+            border-top: 1px solid #f1f3f4;
+            background: #fff;
+        }
+        .btn-clear {
+            background: transparent;
+            border: none;
+            color: #5f6368;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 6px 12px;
+            border-radius: 6px;
+            display: none;
+        }
+        .btn-clear:hover {
+            background: #f1f3f4;
+            color: #202124;
+        }
+        .btn-mic {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #e8f0fe;
+            color: #1a73e8;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-mic:hover {
+            background: #d2e3fc;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+        }
+        .btn-mic.listening {
+            background: #fce8e6;
+            color: #d93025;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: #5f6368;
+            margin-bottom: 15px;
+            padding: 0 5px;
+        }
+        .card {
+            background: white;
+            padding: 22px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            margin-bottom: 16px;
+            border: 1px solid #e8eaed;
+            transition: border-color 0.2s;
+        }
+        .card:hover {
+            border-color: #dadce0;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+        }
+        .meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #5f6368;
+            font-size: 13px;
+            margin-bottom: 14px;
+            border-bottom: 1px solid #f1f3f4;
+            padding-bottom: 10px;
+        }
+        .meta .badge {
+            background: #e8f0fe;
+            color: #1a73e8;
+            padding: 4px 10px;
+            border-radius: 16px;
+            font-weight: 600;
+        }
+        .meta .score-badge {
+            background: #e6f4ea;
+            color: #137333;
+            padding: 4px 10px;
+            border-radius: 16px;
+            font-weight: 600;
+            font-size: 12px;
+        }
+        .arabic-text {
+            font-size: 28px;
+            line-height: 2.1;
+            color: #202124;
+            text-align: center;
+            font-family: 'Traditional Arabic', 'Scheherazade New', serif;
+            direction: rtl;
+            margin-bottom: 18px;
+        }
+        
+        /* --- DESAIN TOMBOL & HASIL TERJEMAHAN AI --- */
+        .card-actions {
+            border-top: 1px solid #f1f3f4;
+            padding-top: 14px;
+            display: flex;
+            justify-content: center;
+        }
+        .btn-ai {
+            background: #ffffff;
+            color: #1a73e8;
+            border: 1px solid #dadce0;
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-ai:hover {
+            background: #f8fafd;
+            border-color: #1a73e8;
+            box-shadow: 0 1px 3px rgba(26,115,232,0.15);
+        }
+        .btn-ai:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .ai-result {
+            margin-top: 16px;
+            display: none;
+        }
+        .ai-result.show {
+            display: block;
+            animation: fadeIn 0.25s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .ai-card-box {
+            background: #f8f9fa;
+            border: 1px solid #e8eaed;
+            border-radius: 10px;
+            padding: 16px;
+            text-align: left;
+        }
+        .ai-section {
+            margin-bottom: 12px;
+        }
+        .ai-section:last-child {
+            margin-bottom: 0;
+            padding-top: 12px;
+            border-top: 1px dashed #dadce0;
+        }
+        .ai-label {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            color: #5f6368;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .ai-text {
+            font-size: 14.5px;
+            line-height: 1.6;
+            color: #202124;
+        }
+        .ai-text-intisari {
+            font-size: 14px;
+            font-weight: 500;
+            color: #1a73e8;
+            background: #e8f0fe;
+            padding: 8px 12px;
+            border-radius: 6px;
+            display: inline-block;
+            margin-top: 4px;
+            line-height: 1.5;
+        }
+
+        .info-msg {
+            text-align: center;
+            color: #5f6368;
+            margin-top: 40px;
+            font-size: 15px;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            border: 1px solid #dadce0;
+        }
+        mark {
+            background-color: #fef08a;
+            color: #000;
+            padding: 0 2px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>🔍 Pencarian Nadzom</h1>
+        <p>Mesin pencari bertenaga Algoritma Fonetik & N-Gram ala Lafzi</p>
+    </div>
+
+    <!-- BOX ALA GOOGLE TRANSLATE -->
+    <div class="translate-box">
+        <div class="textarea-container">
+            <textarea id="searchInput" placeholder="Ketik teks Arab atau gunakan suara..." rows="2"></textarea>
+        </div>
+        <div class="box-footer">
+            <button id="clearBtn" class="btn-clear" onclick="hapusTeks()">✕ Hapus</button>
+            <button id="micBtn" class="btn-mic" onclick="mulaiSuara()">
+                🎤 Suara
+            </button>
+        </div>
+    </div>
+
+    <div class="stats">
+        <span id="engineStatus">⚡ Mode: Fonetik Arab & Trigram</span>
+        <span id="statsInfo"></span>
+    </div>
+    <div id="hasilPencarian"></div>
+
+    <script src="data.js"></script>
+
+    <script>
+        // =================================================================
+        // MASUKKAN API KEY GEMINI ANDA PADA VARIABEL DI BAWAH INI
+        // =================================================================
+        const API_KEY = "MASUKKAN_API_KEY_GEMINI_DISINI";
+
+        const wadahHasil = document.getElementById("hasilPencarian");
+        const searchInput = document.getElementById("searchInput");
+        const statsInfo = document.getElementById("statsInfo");
+        const clearBtn = document.getElementById("clearBtn");
+
+        // =================================================================
+        // 1. MESIN FONETIK ARAB (PHONETIC ENCODER ALA LAFDZI)
+        // Menyederhanakan huruf yang suaranya mirip & sering salah didengar
+        // =================================================================
+        function kodingFonetik(teks) {
+            if (!teks) return "";
+            return teks
+                .replace(/[\u0610-\u061A\u064B-\u065F\u0670]/g, "") // Hapus harakat
+                .replace(/[أإآٱع]/g, "ا")  // Samakan Alif, Hamzah, dan Ain di pengucapan cepat
+                .replace(/[صث]/g, "س")     // Samakan Shod & Tsa menjadi Sin (bunyi S)
+                .replace(/[ط]/g, "ت")      // Samakan Tho menjadi Ta (bunyi T)
+                .replace(/[ذظض]/g, "ز")    // Samakan Dzal, Dho, Dhod menjadi Zay/Z (bunyi Z/D)
+                .replace(/[ق]/g, "ك")      // Samakan Qaf menjadi Kaf (bunyi K)
+                .replace(/[حخ]/g, "ه")     // Samakan Ha kecil & Kha menjadi Ha (bunyi H)
+                .replace(/ة/g, "ه")        // Ta Marbuthah menjadi Ha
+                .replace(/[ىئ]/g, "ي")     // Ya Maqsura & Hamzah Ya menjadi Ya
+                .replace(/ؤ/g, "و")
+                .replace(/ـ/g, "")         // Hapus kashida
+                .replace(/[^\u0600-\u06FF]/g, "") // Hapus karakter non-Arab & spasi
+                .trim();
+        }
+
+        // Normalisasi teks untuk keperluan highlight tampilan
+        function normalisasiArab(teks) {
+            if (!teks) return "";
+            return teks
+                .replace(/[\u0610-\u061A\u064B-\u065F\u0670]/g, "")
+                .replace(/[أإآٱ]/g, "ا")
+                .replace(/ة/g, "ه")
+                .replace(/ى/g, "ي")
+                .replace(/ـ/g, "")
+                .replace(/[^\u0600-\u06FF\s]/g, "")
+                .replace(/\s+/g, " ")
+                .trim();
+        }
+
+        // =================================================================
+        // 2. N-GRAM TRIGRAM SCORING (SØRENSEN-DICE COEFFICIENT)
+        // Memecah bunyi menjadi potongan 3 huruf agar anti-gagal spasi
+        // =================================================================
+        function buatTrigram(str) {
+            const trigrams = [];
+            for (let i = 0; i <= str.length - 3; i++) {
+                trigrams.push(str.slice(i, i + 3));
+            }
+            return trigrams;
+        }
+
+        function skorLafdzi(queryRaw, targetRaw) {
+            const fonetikQuery = kodingFonetik(queryRaw);
+            const fonetikTarget = kodingFonetik(targetRaw);
+
+            if (!fonetikQuery || !fonetikTarget) return 0;
+
+            // Jika bunyi fonetik tepat ada di dalam bait, langsung skor 100%
+            if (fonetikTarget.includes(fonetikQuery)) return 100;
+
+            // Jika query pendek (< 3 huruf), gunakan persentase kecocokan karakter
+            if (fonetikQuery.length < 3) {
+                return fonetikTarget.includes(fonetikQuery) ? 90 : 0;
+            }
+
+            // Hitung kemiripan potongan bunyi (Trigram Overlap)
+            const trigramQ = buatTrigram(fonetikQuery);
+            const trigramT = buatTrigram(fonetikTarget);
+
+            if (trigramQ.length === 0 || trigramT.length === 0) return 0;
+
+            let irisan = 0;
+            const tempT = [...trigramT];
+
+            for (let i = 0; i < trigramQ.length; i++) {
+                const idx = tempT.indexOf(trigramQ[i]);
+                if (idx !== -1) {
+                    irisan++;
+                    tempT.splice(idx, 1); // Hapus agar tidak dihitung ganda
+                }
+            }
+
+            // Rumus Sørensen-Dice
+            const skorDice = (2 * irisan) / (trigramQ.length + trigramT.length) * 100;
+            return Math.round(skorDice);
+        }
+
+        // Highlight kata yang relevan di kartu hasil
+        function highlightTeks(teksAsli, queryNormal) {
+            if (!queryNormal) return teksAsli;
+            const kataQuery = queryNormal.split(" ").filter(k => k.length > 1);
+            let kataAsliArray = teksAsli.split(" ");
+            
+            return kataAsliArray.map(kata => {
+                const fonK = kodingFonetik(kata);
+                const cocok = kataQuery.some(k => {
+                    const fonQ = kodingFonetik(k);
+                    return fonK.includes(fonQ) || (fonQ.length >= 3 && fonQ.includes(fonK));
+                });
+                return cocok ? `<mark>${kata}</mark>` : kata;
+            }).join(" ");
+        }
+
+        // =================================================================
+        // 3. PENCARIAN & RANKING OTOMATIS
+        // =================================================================
+        function cariNadzom() {
+            const queryRaw = searchInput.value;
+            const queryNormal = normalisasiArab(queryRaw);
+
+            clearBtn.style.display = queryRaw.trim().length > 0 ? "inline-block" : "none";
+
+            if (queryNormal === "") {
+                statsInfo.innerHTML = "";
+                wadahHasil.innerHTML = "<div class='info-msg'>Silakan ketik teks Arab atau tekan tombol suara.</div>";
+                return;
+            }
+
+            if (typeof dataNadzom === "undefined") {
+                statsInfo.innerHTML = "";
+                wadahHasil.innerHTML = "<div class='info-msg' style='color:#d93025;'>Error: File data.js tidak terbaca!</div>";
+                return;
+            }
+
+            // Hitung skor kemiripan fonetik untuk setiap bait di database
+            const hasilDenganSkor = dataNadzom.map(item => {
+                const sumberCari = item.teks_pencarian || item.teks_asli;
+                const skor = skorLafdzi(queryRaw, sumberCari);
+                return { ...item, skor };
+            });
+
+            // Saring hanya bait dengan skor kemiripan bunyi di atas 35% dan urutkan dari skor tertinggi
+            const hasil = hasilDenganSkor
+                .filter(item => item.skor >= 35)
+                .sort((a, b) => b.skor - a.skor);
+
+            statsInfo.innerHTML = `Ditemukan: <b>${hasil.length}</b> bait`;
+
+            if (hasil.length === 0) {
+                wadahHasil.innerHTML = "<div class='info-msg'>Bait tidak ditemukan. Coba ucapkan 2 atau 3 kata kunci dengan jelas.</div>";
+                return;
+            }
+
+            wadahHasil.innerHTML = hasil.map((item, index) => {
+                const teksDitandai = highlightTeks(item.teks_asli, queryNormal);
+                const teksAman = item.teks_asli.replace(/'/g, "\\'");
+                const kitabAman = item.kitab.replace(/'/g, "\\'");
+                
+                return `
+                    <div class="card">
+                        <div class="meta">
+                            <span class="badge">📘 ${item.kitab} — Bait ke-<b>${item.bait}</b></span>
+                            <span class="score-badge">⚡ Akurasi: ${item.skor}%</span>
+                        </div>
+                        <div class="arabic-text">${teksDitandai}</div>
+                        
+                        <div class="card-actions">
+                            <button class="btn-ai" id="btn-ai-${index}" onclick="terjemahkanAI(${index}, '${teksAman}', '${kitabAman}')">
+                                ✨ Terjemahkan dengan AI
+                            </button>
+                        </div>
+                        <div id="res-ai-${index}" class="ai-result"></div>
+                    </div>
+                `;
+            }).join("");
+        }
+
+        // =================================================================
+        // 4. TERJEMAHAN AI GEMINI (RINGKAS & MEMAHAMKAN)
+        // =================================================================
+        async function terjemahkanAI(index, teksArab, kitab) {
+            const wadahAI = document.getElementById(`res-ai-${index}`);
+            const tombolAI = document.getElementById(`btn-ai-${index}`);
+            
+            if (!API_KEY || API_KEY === "MASUKKAN_API_KEY_GEMINI_DISINI") {
+                alert("Harap masukkan API Key Gemini Anda di kode index.html sebelum menggunakan fitur AI!");
+                return;
+            }
+
+            wadahAI.classList.add("show");
+            wadahAI.innerHTML = `
+                <div class="ai-card-box" style="text-align: center; color: #5f6368;">
+                    ⏳ <i>AI sedang memproses terjemahan...</i>
+                </div>
+            `;
+            tombolAI.disabled = true;
+
+            const prompt = `Terjemahkan bait nadzom dari kitab "${kitab}":
+"${teksArab}"
+
+Aturan Wajib Jawab:
+1. Terjemahan: Berikan terjemahan bahasa Indonesia yang bagus dan mudah dipahami.
+2. Intisari: Berikan intisari atau kaidahnya DALAM 1 KALIMAT PENDEK YANG SANGAT LUGAS DAN MEMAHAMKAN. Jika di dalam bait terdapat kiasan/perumpamaan yang penting, wajib masukkan kiasan tersebut ke dalam intisari (Contoh: "Orang yang tidak berilmu hakikatnya adalah orang mati seperti bangkai berjalan.", "Untuk mendapatkan ilmu ada 6 syarat utama.", "Kalam adalah lafadz yang tersusun dan memberi faedah."). JANGAN bertele-tele!
+
+Wajib gunakan format persis seperti ini:
+[TERJEMAHAN]
+(isi terjemahan di sini)
+[INTISARI]
+(isi 1 kalimat intisari di sini)`;
+
+            try {
+                const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-goog-api-key": API_KEY
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{ text: prompt }]
+                        }]
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.candidates && data.candidates[0].content.parts[0].text) {
+                    const mentah = data.candidates[0].content.parts[0].text;
+                    
+                    let terjemahan = "";
+                    let intisari = "";
+
+                    if (mentah.includes("[TERJEMAHAN]") && mentah.includes("[INTISARI]")) {
+                        const parts = mentah.split("[INTISARI]");
+                        terjemahan = parts[0].replace("[TERJEMAHAN]", "").trim();
+                        intisari = parts[1].trim();
+                    } else {
+                        terjemahan = mentah;
+                        intisari = "-";
+                    }
+
+                    wadahAI.innerHTML = `
+                        <div class="ai-card-box">
+                            <div class="ai-section">
+                                <div class="ai-label">📖 Terjemahan</div>
+                                <div class="ai-text">${terjemahan.replace(/\n/g, '<br>')}</div>
+                            </div>
+                            <div class="ai-section">
+                                <div class="ai-label">💡 Intisari</div>
+                                <div class="ai-text-intisari">${intisari}</div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    wadahAI.innerHTML = `
+                        <div class="ai-card-box" style="color: #d93025;">
+                            Gagal mengambil terjemahan. Silakan coba beberapa saat lagi.
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                wadahAI.innerHTML = `
+                    <div class="ai-card-box" style="color: #d93025;">
+                        Terjadi kesalahan jaringan saat memanggil API.
+                    </div>
+                `;
+                console.error("AI Error:", error);
+            } finally {
+                tombolAI.disabled = false;
+            }
+        }
+
+        function hapusTeks() {
+            searchInput.value = "";
+            searchInput.focus();
+            cariNadzom();
+        }
+
+        let timerDebounce = null;
+        searchInput.addEventListener("input", () => {
+            clearTimeout(timerDebounce);
+            timerDebounce = setTimeout(cariNadzom, 100);
+        });
+
+        // =================================================================
+        // 5. FITUR SUARA (SPEECH-TO-TEXT)
+        // =================================================================
+        function mulaiSuara() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert("Browser tidak mendukung fitur suara. Gunakan Google Chrome.");
+                return;
+            }
+
+            const recognition = new SpeechRecognition();
+            const micBtn = document.getElementById("micBtn");
+
+            recognition.lang = 'ar-SA';
+            recognition.continuous = false;
+            recognition.interimResults = false;
+
+            recognition.onstart = function() {
+                micBtn.classList.add("listening");
+                micBtn.innerHTML = "⏳ Bicara...";
+                searchInput.placeholder = "Mendengarkan lantunan...";
+            };
+
+            recognition.onresult = function(event) {
+                const teksSuara = event.results[0][0].transcript;
+                searchInput.value = teksSuara;
+                cariNadzom();
+            };
+
+            recognition.onerror = function(event) {
+                alert("Suara gagal dikenali: " + event.error);
+            };
+
+            recognition.onend = function() {
+                micBtn.classList.remove("listening");
+                micBtn.innerHTML = "🎤 Suara";
+                searchInput.placeholder = "Ketik teks Arab atau gunakan suara...";
+            };
+
+            recognition.start();
+        }
+
+        window.onload = () => {
+            searchInput.focus();
+            cariNadzom();
+        };
+    </script>
+</body>
+</html>
 
